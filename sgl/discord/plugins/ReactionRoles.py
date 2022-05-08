@@ -86,7 +86,8 @@ class ReactionRoles():
       await author.send("It already exists in this channel: {0}".format(msg.jump_url))
     else:
       msg = await channel.send(self.welcomeMsg)
-      self.welcomeMsgId = msg.id
+      self.welcomeMsgId = Conf.data["ReactionRoles"][self.topic]["welcomeMsgId"] = msg.id
+      Conf.saveConfigFile()
       await msg.pin()
       for emoji in ReactionRoles.emojiRolesDict[self.topic]:
         await msg.add_reaction(emoji)
