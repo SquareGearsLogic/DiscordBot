@@ -1,0 +1,11 @@
+{
+    "faction activities": {
+        "channelId": 968695034440454184,
+        "roles": {
+            "🚜": 972313210550104094,
+            "🚛": 972313456923537429
+        },
+        "welcomeMsg": "Please pick you roles in faction:\n🚜 - Miner\n🚛 - Courier",
+        "welcomeMsgId": 972688455010246716
+    }
+}

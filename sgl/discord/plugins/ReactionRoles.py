@@ -1,15 +1,20 @@
 import discord
-
+from sgl.discord.Conf import Conf
 
 class ReactionRoles():
   client: discord.Client = None
-
+  emojiRolesDict: dict = {} #static
+  topic = None
   discordEventBusEvents = {'on_ready': '_onReady',
                            'on_message': '_onMessage',
                            'on_raw_reaction': '_onReaction'}
-  def __init__(self, client: discord.Client, topic, welcomeMsg, welcomeMsgId, channelId, emojiRolesDict):
-    """clien          - instance of discord.Client\n
-       topic          - topik of this Reaction Roles processor
+
+  def __init__(self, client: discord.Client, topic, welcomeMsg=None, welcomeMsgId=None, channelId=None, emojiRolesDict=None):
+    """Required:
+       client         - instance of discord.Client\n
+       topic          - topic of this Reaction Roles processor
+
+       These stuff comes from JSON config file and arguments will overwrite JSON config file if provided. You must provide one or enother:
        welcomeMsg     - welcome text that will be posted to explain purpose of all this stuff\n
        welcomeMsgId   - optional, If you already posted a welcome message and don't want a duplicate\n
        channelId      - optional. Lock functionality to a specific one\n
@@ -17,31 +22,45 @@ class ReactionRoles():
                         Emoji can be a character or discord.PartialEmoji object.
                         If characters present - run ReactionRoles.normalizeEmoji(emojiRolesDict) first.
                         Also, the position of icon represents where it's gonna be inserted in nickname among other emojies.
-
       NOTE: Admin's nickname can't be changed by bot!!!"""
+
     self.client = client
+    Conf.data["ReactionRoles"] = Conf.data["ReactionRoles"] if "ReactionRoles" in Conf.data else {}
+    Conf.data["ReactionRoles"][topic] = Conf.data["ReactionRoles"][topic] if topic in Conf.data["ReactionRoles"] else {}
     self.topic = topic
-    self.welcomeMsg = welcomeMsg
-    self.welcomeMsgId = welcomeMsgId
-    self.channelId = channelId
-    self.emojiRolesDict = emojiRolesDict[topic]
-    self._collectEmojiPriority(emojiRolesDict)
+    self.welcomeMsg = Conf.data["ReactionRoles"][topic]["welcomeMsg"] = welcomeMsg if welcomeMsg else Conf.data["ReactionRoles"][topic]["welcomeMsg"]
+    self.welcomeMsgId = Conf.data["ReactionRoles"][topic]["welcomeMsgId"] = welcomeMsgId if welcomeMsgId else Conf.data["ReactionRoles"][topic]["welcomeMsgId"]
+    self.channelId = Conf.data["ReactionRoles"][topic]["channelId"] = channelId if channelId else Conf.data["ReactionRoles"][topic]["channelId"]
+    self._resolveRoles(emojiRolesDict)
+    Conf.saveConfigFile()
+    self._collectEmojiPriority()
 
-  def _collectEmojiPriority(self, emojiRolesDict):
-    self.emojiPriority = []
-    for topic in emojiRolesDict:
-      for emoji in emojiRolesDict[topic]:
-        self.emojiPriority.append(emoji.name)
+  def _resolveRoles(self, emojiRolesDict):
+    Conf.data["ReactionRoles"][self.topic]["roles"] = Conf.data["ReactionRoles"][self.topic]["roles"] if "roles" in Conf.data["ReactionRoles"][self.topic] and emojiRolesDict is None else {}
+    ReactionRoles.emojiRolesDict[self.topic] = ReactionRoles.emojiRolesDict[self.topic] if self.topic in ReactionRoles.emojiRolesDict else {}
+    if emojiRolesDict:
+      ReactionRoles.emojiRolesDict[self.topic] = self._normalizeEmoji(emojiRolesDict)
+      emojiRolesDict = ReactionRoles.emojiRolesDict[self.topic]
+      for emoji in emojiRolesDict:
+        Conf.data["ReactionRoles"][self.topic]["roles"][emoji.name] = emojiRolesDict[emoji]
+      return
+    if Conf.data["ReactionRoles"][self.topic]["roles"]:
+      for emoji in Conf.data["ReactionRoles"][self.topic]["roles"]:
+        ReactionRoles.emojiRolesDict[self.topic][discord.PartialEmoji(name=emoji)] = Conf.data["ReactionRoles"][self.topic]["roles"][emoji]
 
-  @staticmethod
-  def normalizeEmoji(emojiRolesDict):
-    result = {}
-    for name in emojiRolesDict:
-      result[name] = {}
-      for e in emojiRolesDict[name]:
-        emoji = e if type(e) == discord.PartialEmoji else discord.PartialEmoji(name=e)
-        result[name][emoji] = emojiRolesDict[name][e]
+  def _normalizeEmoji(self, emojiRolesDict):
+    # Turns emoji to discord.PartialEmoji(name='green', id=0)
+    result: dict = {}
+    for e in emojiRolesDict:
+      emoji = e if type(e) == discord.PartialEmoji else discord.PartialEmoji(name=e)
+      result[emoji] = emojiRolesDict[e]
     return result
+
+  def _collectEmojiPriority(self):
+    self.emojiPriority = []
+    for emoji in ReactionRoles.emojiRolesDict[self.topic]:
+      self.emojiPriority.append(emoji.name)
+    print("done")
 
   async def _onReady(self):
     self.channel: discord.TextChannel = (await self.client.fetch_channel(self.channelId)) if self.channelId else None
@@ -69,7 +88,7 @@ class ReactionRoles():
       msg = await channel.send(self.welcomeMsg)
       self.welcomeMsgId = msg.id
       await msg.pin()
-      for emoji in self.emojiRolesDict:
+      for emoji in ReactionRoles.emojiRolesDict[self.topic]:
         await msg.add_reaction(emoji)
       print("RR[{0}] Welcome posted #{1} @ channel #{2}: {3}".format(self.topic, msg.id, channel.id, msg.jump_url))
 
@@ -78,7 +97,7 @@ class ReactionRoles():
     guild = await self.client.fetch_guild(payload.guild_id)
     member = payload.member if payload.member else await guild.fetch_member(payload.user_id)
     name = member.nick if member.nick is not None else member.name
-    roleId = self.emojiRolesDict.get(payload.emoji, None)
+    roleId = ReactionRoles.emojiRolesDict[self.topic].get(payload.emoji, None)
     role = discord.Guild = guild.get_role(roleId) if roleId else None
     if role is None: return
     newName = name.replace(payload.emoji.name, '', 1)
