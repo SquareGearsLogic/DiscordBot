@@ -28,7 +28,7 @@ class ReactionRoles(APlugin):
     Conf.data['ReactionRoles'][topic] = {}
     Conf.data['ReactionRoles'][topic]['welcomeMsg'] = 'Please pick you roles in faction:\n🚜 - Miner\n🚛 - Courier'
     Conf.data['ReactionRoles'][topic]['welcomeMsgId'] = None
-    Conf.data['ReactionRoles'][topic]['channelId'] = 1234567890
+    Conf.data['ReactionRoles'][topic]['channelId'] = None
     Conf.data['ReactionRoles'][topic]['roles'] = {'🚜': 123456789,  # Miner role.
                                                   '🚛': 987654321,  # Courier role.
                                                   # discord.PartialEmoji(name='🚛'): 987654321,   # TODO: Support this
@@ -39,13 +39,14 @@ class ReactionRoles(APlugin):
   @staticmethod
   def pluginDescription():
     return "ReactionRoles:\n" \
-           "This plugin helps to manage member roles that they pick themselves by reacting to bot's welcome message with specific emoji mapped to a role.\n" \
+           "This plugin helps to manage member roles that they pick themselves by reacting to bot's welcome message with " \
+           "specific UTF8 emoji character mapped to a discord role id.\n" \
            "The currently only UTF8 emojies supported for the 'role' parameter in config file.\n" \
-           "Config file contains 'topic'(s), and it is recommended to lock each topic to a specific 'channelId'.\n" \
-           "You will also need to describe this topic and roles in the 'welcomeMsg' that will be printed and pinned by bot once you type\n" \
+           "Those settings are grouped by 'topic'(s), that will be auto-locked to a specific 'channelId', once welcome message is posted.\n" \
+           "You only need to set topic name, map roles to emojis and edit 'welcomeMsg' that will be printed and pinned by bot once you type\n" \
            "'!rr_welcome topicname'\n" \
-           "Once this is done, the 'welcomeMsgId' will be populated to config automatically.\n" \
-           "NOTE: Admin's nickname can't be changed by bot!!!"
+           "Once this is done, the 'welcomeMsgId' and 'channelId' will be populated to config automatically.\n" \
+           "NOTE: Admin's nickname can't be changed by bot, use some uther account for testing."
 
   def _resolveRoles(self):
     ReactionRoles.emojiRolesDict = {}
@@ -76,7 +77,7 @@ class ReactionRoles(APlugin):
     self._resolveRoles()
     self._collectEmojiPriority()
     self._collectCannelsAndTopics()
-    self.logger.info('Connected.')
+    self.log.info('Connected.')
 
   async def _onMessage(self, message: discord.Message):
     if message.author == self.client.user: return
@@ -107,7 +108,7 @@ class ReactionRoles(APlugin):
       await msg.pin()
       for emoji in ReactionRoles.emojiRolesDict[topic]:
         await msg.add_reaction(emoji)
-      self.logger.info("[{0}] Welcome posted #{1} @ channel #{2}: {3}".format(self.topic, msg.id, channel.id, msg.jump_url))
+      self.log.info("[{0}] Welcome posted #{1} @ channel #{2}: {3}".format(self.topic, msg.id, channel.id, msg.jump_url))
 
   async def _onReaction(self, payload: discord.RawReactionActionEvent):
     if payload.member == self.client.user: return
@@ -141,11 +142,11 @@ class ReactionRoles(APlugin):
 
   async def _setUserRoleAndName(self, event, member, role, newName):
     if (not event in ['REACTION_ADD', 'REACTION_REMOVE']):
-      self.logger.error('[{0}] Unexpected reaction event {1}'.format(self.topic, event))
+      self.log.error('[{0}] Unexpected reaction event {1}'.format(self.topic, event))
       return False
 
     if event == 'REACTION_ADD':
-      self.logger.info("[{0}] Adding role '{1.name}' #{1.id} for '{2}' #{3.id}".format(self.topic, role, newName, member))
+      self.log.info("[{0}] Adding role '{1.name}' #{1.id} for '{2}' #{3.id}".format(self.topic, role, newName, member))
       try:
         await member.add_roles(role)
       except discord.HTTPException as e:
@@ -153,7 +154,7 @@ class ReactionRoles(APlugin):
         return False
 
     if event == 'REACTION_REMOVE':
-      self.logger.info("[{0}] Removing role '{1.name}' #{1.id} for '{2}' #{3.id}".format(self.topic, role, newName, member))
+      self.log.info("[{0}] Removing role '{1.name}' #{1.id} for '{2}' #{3.id}".format(self.topic, role, newName, member))
       try:
         await member.remove_roles(role)
       except discord.HTTPException as e:

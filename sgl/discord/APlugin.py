@@ -7,7 +7,7 @@ from sgl.discord import Util
 
 class APlugin():
   pluginName = None
-  logger: logging.Logger = None
+  log: logging.Logger = None
 
   @property
   @abstractmethod
@@ -26,7 +26,7 @@ class APlugin():
 
   def __init__(self, child):
     self.pluginName = child if type(child) == str else child.__name__
-    self.logger = self.getLogger()
+    self.log = self.getLogger()
 
   def getLogger(self, maxBytes=100000000, backupCount=10):
     logger = logging.getLogger()
@@ -51,4 +51,4 @@ class APlugin():
     return handler
 
   def printException(self, msg='EXCEPTION IN'):
-    Util.printException(msg, self.logger)
+    Util.printException(msg, self.log)
