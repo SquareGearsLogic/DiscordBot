@@ -17,43 +17,26 @@ Discord bot based on "discord.py" with custom plugins listening/responding to ev
 - edit and run example.py.
 
 ## Discord bot shell
-Discord provides a single connection to discord server, that we wrap into a DiscordEventBus class that represents "Listener Pattern". 
-Basically all you need to do is to feed an instance of discord.Client to its constructor and then add plugin that will be notified upon discord event.
-Plugins should have discordEventBusEvents dictionary field that maps discord.py events to local callbacks.
-
-## Reaction Roles Plugin
-Reaction roles plugin helps to manage user roles that they pick themselves by reacting to bot's welcome message with specific emoji mapped to a role.
+Discord provides a single connection to discord server, that we wrap into a DiscordEventBus class that represents "Listener Pattern", where plugins subscribe using discordEventBusCallbacks mapping of discord event names to local callbacks. For the first run plugins will spawn config files and and prit description of how they work into console.
+Simply edit the config file and restart the bot.
 
 ```python
 import os
 import discord
 from sgl.discord.Conf import Conf
-from sgl.discord.plugins.ReactionRoles import ReactionRoles as RR
-from sgl.discord.DiscordEventBus import DiscordEventBus as DEB
-
-rrTopic = "faction activities"
-rrWelcomeMsg = "Please pick you roles in faction:\n🚜 - Miner\n🚛 - Courier"
-rrWelcomeMsgId = 972688455010246716 # optional. leave None if not posted yet
-rrChannelId = 968695034440454184    # optional. Locks to a specific channel
-rrEmojiRoles = {'🚜':                            972313210550104094,   # Miner role.
-                discord.PartialEmoji(name='🚛'): 972313456923537429,   # Courier role.
-                #discord.PartialEmoji(name='green', id=0): 0,          # ID of the role associated with a partial emoji's ID.
-                }
-
+from sgl.discord.DiscordEventBus import DiscordEventBus
+from sgl.discord import PluginLoader
 
 Conf.loadConfigFile(os.path.realpath('./conf/settings.json'))
 client = discord.Client()
-deb = DEB(client)
-rr = RR(client, rrTopic, rrWelcomeMsg, rrWelcomeMsgId, rrChannelId, rrEmojiRoles)
-# Line above will generate a config file, so next time you can use:
-# rr = RR(client, rrTopic)
-deb.add(rr)
-
-print("Running:\n{0}".format(deb.list()))
+deb = DiscordEventBus(client)
+plugins = PluginLoader.loadAll(client, deb)
 client.run('YOUR_BOT_TOKEN')
 ```
 
-Now go to that channel and message ```!rr_welcome faction activities```. 
-Bot will remove your message, add a pinned welcome message with 2 reaction.
-Use your regular user account and click those '🚜' and '🚛' emojis under the message to get new roles and corresponding emojis in your nickname. The order of emojis in nickname will match your config, not the Discord role priority order.
+## Reaction Roles Plugin
+Reaction roles plugin helps to manage user roles that they pick themselves by reacting to bot's welcome message with specific emoji mapped to a role.
+Once you setup config, go to discord channel and message ```!rr_welcome yourtopicname```. 
+Bot will remove your message, add a pinned welcome message with reaction emojis.
+Use your regular user account and click those emojis under the message to get new roles and corresponding emojis in your nickname. The order of emojis in nickname will match your config, not the Discord role priority order.
 
