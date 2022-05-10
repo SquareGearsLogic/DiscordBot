@@ -1,5 +1,3 @@
-import logging
-
 import discord
 
 from sgl.discord.APlugin import APlugin
@@ -79,7 +77,6 @@ class ReactionRoles(APlugin):
     self._collectEmojiPriority()
     self._collectCannelsAndTopics()
     self.logger.info('Connected.')
-    print("Connected!")
 
   async def _onMessage(self, message: discord.Message):
     if message.author == self.client.user: return

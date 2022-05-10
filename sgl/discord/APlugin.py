@@ -1,8 +1,7 @@
+import sys, os
 from abc import abstractmethod
-import os
 import logging
 import logging.handlers
-import discord
 from sgl.discord import Util
 
 
@@ -30,19 +29,26 @@ class APlugin():
     self.logger = self.getLogger()
 
   def getLogger(self, maxBytes=100000000, backupCount=10):
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
+    logger.addHandler(self._setupFileHandler(maxBytes, backupCount))
+    logger.addHandler(self._setupConsoleHandler())
+    return logger
+
+  def _setupFileHandler(self, maxBytes, backupCount):
     filePath = os.path.realpath('./log/' + self.pluginName + '.log')
     Util.createSubDirWhenMissing(filePath)
-    handler = logging.handlers.RotatingFileHandler(filePath, maxBytes=maxBytes, backupCount=backupCount)
+    handler = logging.handlers.RotatingFileHandler(filePath, maxBytes=maxBytes, backupCount=backupCount, encoding='utf-8')
     # formatter = logging.Formatter('%(asctime)s|%(process)d|%(threadName)s %(name)s %(pathname)s %(filename)s:%(module)s:%(funcName)s(%(lineno)d) [%(levelname)s]: %(message)s')
     formatter = logging.Formatter('%(asctime)s:%(funcName)s(%(lineno)d) [%(levelname)s]: %(message)s')
     # formatter.converter = time.gmtime  # if you want UTC time
     handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
+    return handler
+
+  def _setupConsoleHandler(self):
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    return handler
 
   def printException(self, msg='EXCEPTION IN'):
     Util.printException(msg, self.logger)
